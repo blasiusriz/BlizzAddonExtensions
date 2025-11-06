@@ -1,24 +1,49 @@
 local module = {}
+local BlizzAddonExtensions = _G.BlizzAddonExtensions
+local db
 
 local frame = CreateFrame("Frame", "BAE_TargetCastBar", UIParent)
-frame:SetSize(320, 26)
+frame:SetSize(320, 30)
 frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
 frame:Hide()
 
+-- Background
 frame.bg = frame:CreateTexture(nil, "BACKGROUND")
 frame.bg:SetAllPoints(frame)
 frame.bg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
-frame.bg:SetVertexColor(0,0,0,0.6)
+frame.bg:SetVertexColor(0, 0, 0, 0.6)
+
+-- Border for the cast bar
+local border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+border:SetAllPoints(frame)
+border:SetBackdrop({
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    edgeSize = 12,
+})
+border:SetBackdropBorderColor(0, 0, 0)
 
 -- Spell icon on the left
 local icon = frame:CreateTexture(nil, "ARTWORK")
-icon:SetSize(26, 26)
+icon:SetSize(30, 30)
 icon:SetPoint("RIGHT", frame, "LEFT", -4, 0)
 icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 icon:Hide()
 
+-- Border for the icon
+local iconBorder = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+iconBorder:SetSize(32, 32)
+iconBorder:SetPoint("CENTER", icon, "CENTER")
+iconBorder:SetBackdrop({
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    edgeSize = 12,
+})
+iconBorder:SetBackdropBorderColor(0, 0, 0)
+iconBorder:Hide()
+
+-- Cast bar itself
 local bar = CreateFrame("StatusBar", nil, frame)
-bar:SetAllPoints(frame)
+bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 3, -3)
+bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -3, 3)
 bar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
 bar:SetMinMaxValues(0, 1)
 bar:SetValue(0)
@@ -28,6 +53,7 @@ bar.text:SetPoint("CENTER")
 bar.text:SetJustifyH("CENTER")
 bar.text:SetSize(280, 20)
 
+-- Dragging
 frame:SetMovable(true)
 frame:EnableMouse(true)
 frame:RegisterForDrag("LeftButton")
@@ -40,6 +66,7 @@ local function StopCastBar()
     cast.active = false
     frame:Hide()
     icon:Hide()
+    iconBorder:Hide()
 end
 
 local function StartCastBar(name, iconTexture, notInterruptible, startTimeMS, endTimeMS, isChannel)
@@ -53,28 +80,32 @@ local function StartCastBar(name, iconTexture, notInterruptible, startTimeMS, en
     bar.text:SetText(name)
 
     if notInterruptible then
-        bar:SetStatusBarColor(0.5,0.5,0.5)
+        bar:SetStatusBarColor(0.5, 0.5, 0.5)
     else
-        bar:SetStatusBarColor(1,0,0)
+        bar:SetStatusBarColor(1, 0, 0)
     end
 
     if iconTexture then
         icon:SetTexture(iconTexture)
         icon:Show()
+        iconBorder:Show()
     else
         icon:Hide()
+        iconBorder:Hide()
     end
 
     frame:Show()
 end
 
 local function UpdateFromTarget()
-    local name, _, texture, startTime, endTime, _, notInterruptible = UnitCastingInfo("target")
+	local name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, _
+    name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, _ = UnitCastingInfo("target")
+	
     if name then
         StartCastBar(name, texture, notInterruptible, startTime, endTime, false)
         return
     end
-    name, _, texture, startTime, endTime, _, notInterruptible = UnitChannelInfo("target")
+    name, _, texture, startTime, endTime, _, notInterruptible, _ = UnitChannelInfo("target")
     if name then
         StartCastBar(name, texture, notInterruptible, startTime, endTime, true)
         return
@@ -113,7 +144,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     bar:SetValue(elapsedTime)
 end)
 
--- Helper: show a dummy cast bar for positioning
+-- Dummy cast for unlock mode
 local function ShowDummyCast()
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0.5)
@@ -121,14 +152,44 @@ local function ShowDummyCast()
     bar:SetStatusBarColor(1, 0, 0)
     icon:SetTexture("Interface\\ICONS\\INV_Misc_QuestionMark")
     icon:Show()
+    iconBorder:Show()
     frame:Show()
 end
 
-function module:OnLoad()
+local function ResetCastbar()
+	frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+end
+
+local function SaveCastbar()
+	local point, _, relativePoint, xOfs, yOfs = frame:GetPoint()		
+	db.point, db.relativePoint, db.xOfs, db.yOfs = point, relativePoint, xOfs, yOfs
+end
+
+function module:OnLoad()	
     BlizzAddonExtensions:Print("Module loaded: TargetCastBar")
 end
 
-function module:OnEnable()
+function module:OnAddonLoaded()
+	if not _TargetCastBar then
+		_TargetCastBar = {}
+		BlizzAddonExtensions:Print("Initializing Target Castbar DB")
+	end
+    db = _TargetCastBar
+
+    -- Restore last known position
+    if db.point and db.relativePoint then
+        frame:ClearAllPoints()
+        frame:SetPoint(db.point, UIParent, db.relativePoint, db.xOfs or 0, db.yOfs or 0)
+		BlizzAddonExtensions:Print("Restored position.")
+	else
+		frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+		BlizzAddonExtensions:Print("Using default position.")
+    end
+	
+    BlizzAddonExtensions:Print("Module on addon loaded: TargetCastBar")
+end
+
+function module:OnEnable()	
     UpdateFromTarget()
 end
 
@@ -136,16 +197,24 @@ function module:OnCommand(cmd)
     if cmd == "lock" then
         frame:EnableMouse(false)
         frame:SetMovable(false)
+		
+		-- Save position
+		SaveCastbar()
+		
         if not cast.active then
             frame:Hide()
             icon:Hide()
+            iconBorder:Hide()
         end
         BlizzAddonExtensions:Print("TargetCastBar locked.")
     elseif cmd == "unlock" then
         frame:EnableMouse(true)
         frame:SetMovable(true)
         ShowDummyCast()
-        BlizzAddonExtensions:Print("TargetCastBar unlocked (dummy cast visible).")
+        BlizzAddonExtensions:Print("TargetCastBar unlocked.")
+	elseif cmd == "reset" then
+		ResetCastbar()
+        BlizzAddonExtensions:Print("TargetCastBar reset.")	
     end
 end
 

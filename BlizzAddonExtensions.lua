@@ -17,7 +17,14 @@ local function InitializeModules()
     for name, module in pairs(BAE.modules) do
         if module.OnEnable then module:OnEnable() end
     end
-    BAE:Print("All modules initialized.")
+    BAE:Print("All modules initialized run.")
+end
+
+local function OnAddonLoaded()
+    for name, module in pairs(BAE.modules) do
+        if module.OnAddonLoaded then module:OnAddonLoaded() end
+    end
+    BAE:Print("All modules on loaded run.")
 end
 
 local frame = CreateFrame("Frame")
@@ -25,8 +32,11 @@ frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 
 frame:SetScript("OnEvent", function(self, event, arg1)
-    if event == "ADDON_LOADED" and arg1 == "BlizzAddonExtensions" then
+    if event == "ADDON_LOADED" and arg1 == "BlizzAddonExtensions" then			
         BAE:Print("Loaded successfully.")
+				
+		-- Modules On Addon Loaded
+		OnAddonLoaded()
     elseif event == "PLAYER_LOGIN" then
         InitializeModules()
     end
@@ -43,13 +53,13 @@ SlashCmdList["BAE"] = function(msg)
         end
     elseif msg == "reload" then
         ReloadUI()
-    elseif msg == "lock" or msg == "unlock" then
-        -- pass lock/unlock commands to modules that support them
+    elseif msg == "lock" or msg == "unlock" or msg == "reset" then
+        -- pass lock/unlock/reset commands to modules that support them
         for _, module in pairs(BAE.modules) do
             if module.OnCommand then module:OnCommand(msg) end
         end
     else
-        BAE:Print("Commands: /bae list | /bae reload | /bae lock | /bae unlock")
+        BAE:Print("Commands: /bae list | /bae reload | /bae lock | /bae unlock | /bae reset")
     end
 end
 

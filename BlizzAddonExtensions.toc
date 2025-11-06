@@ -1,7 +1,8 @@
 ## Interface: 110205
 ## Title: BlizzAddonExtensions
+## SavedVariables: _TargetCastBar
 ## Notes: Modular WoW Addon Extensions (includes Target CastBar module)
 ## Author: ChatGPT and Mizuki
 ## Version: 1.1
-Core.lua
+BlizzAddonExtensions.lua
 Modules/TargetCastBar.lua
