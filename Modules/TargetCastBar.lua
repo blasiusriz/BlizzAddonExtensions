@@ -10,6 +10,13 @@ frame.bg:SetAllPoints(frame)
 frame.bg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
 frame.bg:SetVertexColor(0,0,0,0.6)
 
+-- Spell icon on the left
+local icon = frame:CreateTexture(nil, "ARTWORK")
+icon:SetSize(26, 26)
+icon:SetPoint("RIGHT", frame, "LEFT", -4, 0)
+icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+icon:Hide()
+
 local bar = CreateFrame("StatusBar", nil, frame)
 bar:SetAllPoints(frame)
 bar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
@@ -29,21 +36,13 @@ frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
 
 local cast = { active = false }
 
--- Helper: show a dummy cast bar for positioning
-local function ShowDummyCast()
-    bar:SetMinMaxValues(0, 1)
-    bar:SetValue(0.5)
-    bar.text:SetText("Example Spell")
-    bar:SetStatusBarColor(1, 0, 0)
-    frame:Show()
-end
-
 local function StopCastBar()
     cast.active = false
     frame:Hide()
+    icon:Hide()
 end
 
-local function StartCastBar(name, notInterruptible, startTimeMS, endTimeMS, isChannel)
+local function StartCastBar(name, iconTexture, notInterruptible, startTimeMS, endTimeMS, isChannel)
     cast.startTime = startTimeMS / 1000
     cast.endTime = endTimeMS / 1000
     cast.duration = cast.endTime - cast.startTime
@@ -59,18 +58,25 @@ local function StartCastBar(name, notInterruptible, startTimeMS, endTimeMS, isCh
         bar:SetStatusBarColor(1,0,0)
     end
 
+    if iconTexture then
+        icon:SetTexture(iconTexture)
+        icon:Show()
+    else
+        icon:Hide()
+    end
+
     frame:Show()
 end
 
 local function UpdateFromTarget()
-    local name, _, _, startTime, endTime, _, notInterruptible = UnitCastingInfo("target")
+    local name, _, texture, startTime, endTime, _, notInterruptible = UnitCastingInfo("target")
     if name then
-        StartCastBar(name, notInterruptible, startTime, endTime, false)
+        StartCastBar(name, texture, notInterruptible, startTime, endTime, false)
         return
     end
-    name, _, _, startTime, endTime, _, notInterruptible = UnitChannelInfo("target")
+    name, _, texture, startTime, endTime, _, notInterruptible = UnitChannelInfo("target")
     if name then
-        StartCastBar(name, notInterruptible, startTime, endTime, true)
+        StartCastBar(name, texture, notInterruptible, startTime, endTime, true)
         return
     end
     StopCastBar()
@@ -107,6 +113,17 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     bar:SetValue(elapsedTime)
 end)
 
+-- Helper: show a dummy cast bar for positioning
+local function ShowDummyCast()
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0.5)
+    bar.text:SetText("Example Spell")
+    bar:SetStatusBarColor(1, 0, 0)
+    icon:SetTexture("Interface\\ICONS\\INV_Misc_QuestionMark")
+    icon:Show()
+    frame:Show()
+end
+
 function module:OnLoad()
     BlizzAddonExtensions:Print("Module loaded: TargetCastBar")
 end
@@ -119,15 +136,15 @@ function module:OnCommand(cmd)
     if cmd == "lock" then
         frame:EnableMouse(false)
         frame:SetMovable(false)
-        -- Hide dummy if no real cast active
         if not cast.active then
             frame:Hide()
+            icon:Hide()
         end
         BlizzAddonExtensions:Print("TargetCastBar locked.")
     elseif cmd == "unlock" then
         frame:EnableMouse(true)
         frame:SetMovable(true)
-        ShowDummyCast() -- make it visible for moving
+        ShowDummyCast()
         BlizzAddonExtensions:Print("TargetCastBar unlocked (dummy cast visible).")
     end
 end
