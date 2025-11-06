@@ -1,0 +1,7 @@
+## Interface: 110205
+## Title: BlizzAddonExtensions
+## Notes: Modular WoW Addon Extensions (includes Target CastBar module)
+## Author: ChatGPT and Mizuki
+## Version: 1.1
+Core.lua
+Modules/TargetCastBar.lua
