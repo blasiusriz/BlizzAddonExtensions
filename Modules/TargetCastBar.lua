@@ -2,6 +2,35 @@ local module = {}
 local BlizzAddonExtensions = _G.BlizzAddonExtensions
 local db
 
+local INTERRUPT_SPELLS = {
+    WARRIOR = 6552,     -- Pummel
+    ROGUE = 1766,       -- Kick
+    MAGE = 2139,        -- Counterspell
+    SHAMAN = 57994,     -- Wind Shear
+    PALADIN = 96231,    -- Rebuke
+    DEMONHUNTER = 183752,-- Disrupt
+    MONK = 116705,      -- Spear Hand Strike
+    DEATHKNIGHT = 47528, -- Mind Freeze
+    HUNTER = 147362,    -- Counter Shot
+    EVOKER = 351338,    -- Quell
+}
+
+local _, class = UnitClass("player")
+local interruptSpellID = INTERRUPT_SPELLS[class]
+
+local events = {
+    "PLAYER_TARGET_CHANGED",
+    "PLAYER_ENTERING_WORLD",
+    "UNIT_SPELLCAST_START",
+    "UNIT_SPELLCAST_STOP",
+    "UNIT_SPELLCAST_FAILED",
+    "UNIT_SPELLCAST_INTERRUPTED",
+    "UNIT_SPELLCAST_CHANNEL_START",
+    "UNIT_SPELLCAST_CHANNEL_STOP",
+    "UNIT_SPELLCAST_INTERRUPTIBLE",
+    "UNIT_SPELLCAST_NOT_INTERRUPTIBLE"
+}
+
 local frame = CreateFrame("Frame", "BAE_TargetCastBar", UIParent)
 frame:SetSize(320, 30)
 frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
@@ -28,6 +57,13 @@ icon:SetSize(30, 30)
 icon:SetPoint("RIGHT", frame, "LEFT", -4, 0)
 icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 icon:Hide()
+
+-- Interrupt Icon
+local interruptIcon = frame:CreateTexture(nil, "OVERLAY")
+interruptIcon:SetSize(30, 30)
+interruptIcon:SetPoint("LEFT", frame, "RIGHT", 4, 0)
+interruptIcon:SetAlpha(0.7)
+interruptIcon:Hide()
 
 -- Border for the icon
 local iconBorder = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
@@ -97,6 +133,33 @@ local function StartCastBar(name, iconTexture, notInterruptible, startTimeMS, en
     frame:Show()
 end
 
+local function IsInterruptReady(spellID)
+    local usable, noMana = _G.C_Spell.IsSpellUsable(spellID)
+    local spellCooldownInfo = _G.C_Spell.GetSpellCooldown(spellID)
+
+    return usable and (spellCooldownInfo.duration == 0)
+end
+
+local function GetInterruptSpellTexture(interruptSpellID)
+	return _G.C_Spell.GetSpellTexture(interruptSpellID)
+end
+
+local function UpdateInterruptIcon()
+	local _, _, _, _, _, _, _, notInterruptible, _
+    _, _, _, _, _, _, _, notInterruptible, _ = UnitCastingInfo("target")
+
+	if not notInterruptible and interruptSpellID then
+		if IsInterruptReady(interruptSpellID) then
+			interruptIcon:SetTexture(GetInterruptSpellTexture(interruptSpellID))
+			interruptIcon:Show()
+		else
+			interruptIcon:Hide()
+		end
+	else
+		interruptIcon:Hide()
+	end
+end
+
 local function UpdateFromTarget()
 	local name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, _
     name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, _ = UnitCastingInfo("target")
@@ -110,21 +173,9 @@ local function UpdateFromTarget()
         StartCastBar(name, texture, notInterruptible, startTime, endTime, true)
         return
     end
+	
     StopCastBar()
 end
-
-local events = {
-    "PLAYER_TARGET_CHANGED",
-    "PLAYER_ENTERING_WORLD",
-    "UNIT_SPELLCAST_START",
-    "UNIT_SPELLCAST_STOP",
-    "UNIT_SPELLCAST_FAILED",
-    "UNIT_SPELLCAST_INTERRUPTED",
-    "UNIT_SPELLCAST_CHANNEL_START",
-    "UNIT_SPELLCAST_CHANNEL_STOP",
-    "UNIT_SPELLCAST_INTERRUPTIBLE",
-    "UNIT_SPELLCAST_NOT_INTERRUPTIBLE"
-}
 
 for _, ev in ipairs(events) do frame:RegisterEvent(ev) end
 
@@ -142,6 +193,8 @@ frame:SetScript("OnUpdate", function(_, elapsed)
         return
     end
     bar:SetValue(elapsedTime)
+	
+	UpdateInterruptIcon()
 end)
 
 -- Dummy cast for unlock mode
