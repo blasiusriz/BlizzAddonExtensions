@@ -1,7 +1,10 @@
 local module = {}
 local BlizzAddonExtensions = _G.BlizzAddonExtensions
+local targetCastBarFrame = _G.TargetFrameSpellBar
 local db
+local targetCastBarPoint, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs, targetCastBarScale
 
+-- List of Interrupt spells
 local INTERRUPT_SPELLS = {
     WARRIOR = 6552,     -- Pummel
     ROGUE = 1766,       -- Kick
@@ -15,211 +18,83 @@ local INTERRUPT_SPELLS = {
     EVOKER = 351338,    -- Quell
 }
 
+-- Get the players interrupt spell
 local _, class = UnitClass("player")
 local interruptSpellID = INTERRUPT_SPELLS[class]
 
-local events = {
-    "PLAYER_TARGET_CHANGED",
-    "PLAYER_ENTERING_WORLD",
-    "UNIT_SPELLCAST_START",
-    "UNIT_SPELLCAST_STOP",
-    "UNIT_SPELLCAST_FAILED",
-    "UNIT_SPELLCAST_INTERRUPTED",
-    "UNIT_SPELLCAST_CHANNEL_START",
-    "UNIT_SPELLCAST_CHANNEL_STOP",
-    "UNIT_SPELLCAST_INTERRUPTIBLE",
-    "UNIT_SPELLCAST_NOT_INTERRUPTIBLE"
-}
+-- Function to create an interrupt icon frame
+local function CreateInterruptIconFrame()
+	local parentFrame = targetCastBarFrame
+    local button = CreateFrame("Frame", nil, parentFrame)
+	button:SetSize(20, 20)
+	button:SetPoint("LEFT", targetCastBarFrame, "RIGHT", 4, -5)
+	button:SetAlpha(0.7)
 
-local frame = CreateFrame("Frame", "BAE_TargetCastBar", UIParent)
-frame:SetSize(320, 30)
-frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
-frame:Hide()
+    -- Create icon texture
+    button.icon = button:CreateTexture(nil, "BACKGROUND")
+    button.icon:SetAllPoints()
+    button.icon:SetTexCoord(0.04, 0.96, 0.04, 0.96)
 
--- Background
-frame.bg = frame:CreateTexture(nil, "BACKGROUND")
-frame.bg:SetAllPoints(frame)
-frame.bg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
-frame.bg:SetVertexColor(0, 0, 0, 0.6)
+    -- Create cooldown frame
+    button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+    button.cooldown:SetAllPoints()
 
--- Border for the cast bar
-local border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-border:SetAllPoints(frame)
-border:SetBackdrop({
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    edgeSize = 12,
-})
-border:SetBackdropBorderColor(0, 0, 0)
-
--- Spell icon on the left
-local icon = frame:CreateTexture(nil, "ARTWORK")
-icon:SetSize(30, 30)
-icon:SetPoint("RIGHT", frame, "LEFT", -4, 0)
-icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-icon:Hide()
-
--- Interrupt Icon
-local interruptIcon = frame:CreateTexture(nil, "OVERLAY")
-interruptIcon:SetSize(30, 30)
-interruptIcon:SetPoint("LEFT", frame, "RIGHT", 4, 0)
-interruptIcon:SetAlpha(0.7)
-interruptIcon:Hide()
-
--- Border for the icon
-local iconBorder = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-iconBorder:SetSize(32, 32)
-iconBorder:SetPoint("CENTER", icon, "CENTER")
-iconBorder:SetBackdrop({
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    edgeSize = 12,
-})
-iconBorder:SetBackdropBorderColor(0, 0, 0)
-iconBorder:Hide()
-
--- Cast bar itself
-local bar = CreateFrame("StatusBar", nil, frame)
-bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 3, -3)
-bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -3, 3)
-bar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
-bar:SetMinMaxValues(0, 1)
-bar:SetValue(0)
-
-bar.text = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-bar.text:SetPoint("CENTER")
-bar.text:SetJustifyH("CENTER")
-bar.text:SetSize(280, 20)
-
--- Dragging
-frame:SetMovable(true)
-frame:EnableMouse(true)
-frame:RegisterForDrag("LeftButton")
-frame:SetScript("OnDragStart", frame.StartMoving)
-frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-
-local cast = { active = false }
-
-local function StopCastBar()
-    cast.active = false
-    frame:Hide()
-    icon:Hide()
-    iconBorder:Hide()
+    return button
 end
 
-local function StartCastBar(name, iconTexture, notInterruptible, startTimeMS, endTimeMS, isChannel)
-    cast.startTime = startTimeMS / 1000
-    cast.endTime = endTimeMS / 1000
-    cast.duration = cast.endTime - cast.startTime
-    cast.active = true
+-- Create the Interrupt Icon and attach it to the target castbar
+local interruptIcon = CreateInterruptIconFrame()
 
-    bar:SetMinMaxValues(0, cast.duration)
-    bar:SetValue(0)
-    bar.text:SetText(name)
-
-    if notInterruptible then
-        bar:SetStatusBarColor(0.5, 0.5, 0.5)
-    else
-        bar:SetStatusBarColor(1, 0, 0)
-    end
-
-    if iconTexture then
-        icon:SetTexture(iconTexture)
-        icon:Show()
-        iconBorder:Show()
-    else
-        icon:Hide()
-        iconBorder:Hide()
-    end
-
-    frame:Show()
-end
-
+-- Check if the interrupt spell can be used
 local function IsInterruptReady(spellID)
     local usable, noMana = _G.C_Spell.IsSpellUsable(spellID)
     local spellCooldownInfo = _G.C_Spell.GetSpellCooldown(spellID)
+	interruptIcon.cooldown:SetCooldown(spellCooldownInfo.startTime, spellCooldownInfo.duration)
+	
+	local isOnCooldown = interruptIcon.cooldown:IsShown()
 
-    return usable and (spellCooldownInfo.duration == 0)
+    return usable and not isOnCooldown
 end
 
+-- Get the icon for the players interrupt spell
 local function GetInterruptSpellTexture(interruptSpellID)
 	return _G.C_Spell.GetSpellTexture(interruptSpellID)
 end
 
-local function UpdateInterruptIcon()
-	local _, _, _, _, _, _, _, notInterruptible, _
-    _, _, _, _, _, _, _, notInterruptible, _ = UnitCastingInfo("target")
-
-	if not notInterruptible and interruptSpellID then
-		if IsInterruptReady(interruptSpellID) then
-			interruptIcon:SetTexture(GetInterruptSpellTexture(interruptSpellID))
-			interruptIcon:Show()
-		else
-			interruptIcon:Hide()
-		end
-	else
-		interruptIcon:Hide()
-	end
+local function ResetTargetCastbarSettings()
+	targetCastBarPoint = "CENTER"
+	targetCastBarRelativePoint = "CENTER"
+	targetCastBarXofs = 0
+	targetCastBarYofs = 0
+	targetCastBarScale = 1
+	targetCastBarFrame:SetScale(targetCastBarScale)
 end
 
-local function UpdateFromTarget()
-	local name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, _
-    name, text, texture, startTime, endTime, isTradeSkill, _, notInterruptible, _ = UnitCastingInfo("target")
-	
-    if name then
-        StartCastBar(name, texture, notInterruptible, startTime, endTime, false)
-        return
-    end
-    name, _, texture, startTime, endTime, _, notInterruptible, _ = UnitChannelInfo("target")
-    if name then
-        StartCastBar(name, texture, notInterruptible, startTime, endTime, true)
-        return
-    end
-	
-    StopCastBar()
+local function LoadTargetCastbarSettings()
+	local scale = targetCastBarFrame:GetScale()
+	targetCastBarPoint = db.point or "CENTER"
+	targetCastBarRelativePoint = db.relativePoint or "CENTER"
+	targetCastBarXofs = db.xOfs or 0
+	targetCastBarYofs = db.yOfs or 0
+	targetCastBarScale = db.scale or scale
+	targetCastBarFrame:SetScale(targetCastBarScale)
 end
 
-for _, ev in ipairs(events) do frame:RegisterEvent(ev) end
-
-frame:SetScript("OnEvent", function(_, event, unit)
-    if unit and unit ~= "target" then return end
-    UpdateFromTarget()
-end)
-
-frame:SetScript("OnUpdate", function(_, elapsed)
-    if not cast.active then return end
-    local now = GetTime()
-    local elapsedTime = now - cast.startTime
-    if elapsedTime >= cast.duration then
-        StopCastBar()
-        return
-    end
-    bar:SetValue(elapsedTime)
-	
-	UpdateInterruptIcon()
-end)
-
--- Dummy cast for unlock mode
-local function ShowDummyCast()
-    bar:SetMinMaxValues(0, 1)
-    bar:SetValue(0.5)
-    bar.text:SetText("Example Spell")
-    bar:SetStatusBarColor(1, 0, 0)
-    icon:SetTexture("Interface\\ICONS\\INV_Misc_QuestionMark")
-    icon:Show()
-    iconBorder:Show()
-    frame:Show()
+local function SaveTargetCastbarSettings()
+	db.point = targetCastBarPoint
+	db.relativePoint = targetCastBarRelativePoint
+	db.xOfs = targetCastBarXofs
+	db.yOfs = targetCastBarYofs
+	db.scale = targetCastBarScale
+	targetCastBarFrame:SetScale(targetCastBarScale)
 end
 
-local function ResetCastbar()
-	frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
-end
-
-local function SaveCastbar()
-	local point, _, relativePoint, xOfs, yOfs = frame:GetPoint()		
-	db.point, db.relativePoint, db.xOfs, db.yOfs = point, relativePoint, xOfs, yOfs
+local function PrintTargetCastBarSettings()
+	print("Target Cast Bar Point: " .. targetCastBarPoint .. ", Relative Point: " .. targetCastBarRelativePoint .. ", X: " .. targetCastBarXofs .. ", Y: " .. targetCastBarYofs .. ", Scale: " .. targetCastBarScale)
 end
 
 function module:OnLoad()	
-    BlizzAddonExtensions:Print("Module loaded: TargetCastBar")
+
 end
 
 function module:OnAddonLoaded()
@@ -229,46 +104,65 @@ function module:OnAddonLoaded()
 	end
     db = _TargetCastBar
 
-    -- Restore last known position
-    if db.point and db.relativePoint then
-        frame:ClearAllPoints()
-        frame:SetPoint(db.point, UIParent, db.relativePoint, db.xOfs or 0, db.yOfs or 0)
-		BlizzAddonExtensions:Print("Restored position.")
-	else
-		frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
-		BlizzAddonExtensions:Print("Using default position.")
-    end
-	
-    BlizzAddonExtensions:Print("Module on addon loaded: TargetCastBar")
+	-- load default scale
+	local scale = targetCastBarFrame:GetScale()
+
+	-- restore saved position if available or revert to initial values
+	LoadTargetCastbarSettings()
+
+    BlizzAddonExtensions:Print("TargetCastBar initialized")
 end
 
 function module:OnEnable()	
-    UpdateFromTarget()
+
 end
 
-function module:OnCommand(cmd)
-    if cmd == "lock" then
-        frame:EnableMouse(false)
-        frame:SetMovable(false)
-		
-		-- Save position
-		SaveCastbar()
-		
-        if not cast.active then
-            frame:Hide()
-            icon:Hide()
-            iconBorder:Hide()
-        end
-        BlizzAddonExtensions:Print("TargetCastBar locked.")
-    elseif cmd == "unlock" then
-        frame:EnableMouse(true)
-        frame:SetMovable(true)
-        ShowDummyCast()
-        BlizzAddonExtensions:Print("TargetCastBar unlocked.")
-	elseif cmd == "reset" then
-		ResetCastbar()
-        BlizzAddonExtensions:Print("TargetCastBar reset.")	
+function module:OnCommand(cmd, args)
+    if cmd == "targetcastbarsetx" then
+		targetCastBarXofs = args or 0
+		SaveTargetCastbarSettings()
+        BlizzAddonExtensions:Print("Target Cast Bar X set to: " .. targetCastBarXofs)
+	elseif cmd == "targetcastbarsety" then		
+		targetCastBarYofs = args or 0
+		SaveTargetCastbarSettings()
+        BlizzAddonExtensions:Print("Target Cast Bar Y set to: " .. targetCastBarYofs)
+	elseif cmd == "targetcastbarsetscale" then		
+		targetCastBarScale = args or 1
+		SaveTargetCastbarSettings()
+        BlizzAddonExtensions:Print("Target Cast Bar Scale set to: " .. targetCastBarScale)
+	elseif cmd == "targetcastbarinfo" then
+		PrintTargetCastBarSettings()
+	elseif cmd == "targetcastbarreset" then
+		ResetTargetCastbarSettings()
+		SaveTargetCastbarSettings()
+        BlizzAddonExtensions:Print("Target Cast Bar reset.")
+		PrintTargetCastBarSettings()
     end
 end
+
+-- Border Shield is shown on castbar, meaning spell is not interruptible
+hooksecurefunc(targetCastBarFrame.BorderShield, "Show", function()
+	targetCastBarFrame:SetStatusBarColor(0.5, 0.5, 0.5)	
+	interruptIcon:Hide()
+end)
+
+-- Border Shield is not shown on castbar, meaning spell is interruptible
+hooksecurefunc(targetCastBarFrame.BorderShield, "Hide", function()
+	targetCastBarFrame:SetStatusBarColor(1, 0, 0)
+	
+	if IsInterruptReady(interruptSpellID) then
+		interruptIcon.icon:SetTexture(GetInterruptSpellTexture(interruptSpellID))
+		interruptIcon:Show()
+	else
+		interruptIcon:Hide()
+	end	
+end)
+
+-- Prevent Target Castbar Frame from being repositioned to default position
+hooksecurefunc(targetCastBarFrame, "SetPoint", function()
+	local meta = getmetatable(targetCastBarFrame).__index
+	meta.ClearAllPoints(targetCastBarFrame)
+	meta.SetPoint(targetCastBarFrame, targetCastBarPoint, UIParent, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs)
+end)
 
 BlizzAddonExtensions:RegisterModule("TargetCastBar", module)

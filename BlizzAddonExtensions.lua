@@ -24,7 +24,7 @@ local function OnAddonLoaded()
     for name, module in pairs(BAE.modules) do
         if module.OnAddonLoaded then module:OnAddonLoaded() end
     end
-    BAE:Print("All modules on loaded run.")
+    BAE:Print("All modules loaded.")
 end
 
 local frame = CreateFrame("Frame")
@@ -45,21 +45,22 @@ end)
 -- Slash command for general control
 SLASH_BAE1 = "/bae"
 SlashCmdList["BAE"] = function(msg)
-    msg = msg:lower():trim()
-    if msg == "list" then
+    local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
+    cmd = cmd:lower():trim()
+    args = args:trim()
+
+    if cmd == "list" then
         BAE:Print("Loaded modules:")
         for name in pairs(BAE.modules) do
             print(" - " .. name)
         end
-    elseif msg == "reload" then
-        ReloadUI()
-    elseif msg == "lock" or msg == "unlock" or msg == "reset" then
-        -- pass lock/unlock/reset commands to modules that support them
-        for _, module in pairs(BAE.modules) do
-            if module.OnCommand then module:OnCommand(msg) end
-        end
+    elseif cmd == "help" then
+        BAE:Print("Commands: /bae list | /bae targetCastBarSetX . | /bae targetCastBarSetY . | /bae targetCastBarSetScale . | /bae targetCastBarReset")       
     else
-        BAE:Print("Commands: /bae list | /bae reload | /bae lock | /bae unlock | /bae reset")
+        -- pass commands to modules that support them
+        for _, module in pairs(BAE.modules) do
+            if module.OnCommand then module:OnCommand(cmd, args) end
+        end
     end
 end
 
