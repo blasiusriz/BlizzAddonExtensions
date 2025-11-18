@@ -28,7 +28,7 @@ local function CreateInterruptIconFrame()
     local button = CreateFrame("Frame", nil, parentFrame)
 	button:SetSize(20, 20)
 	button:SetPoint("LEFT", targetCastBarFrame, "RIGHT", 4, -5)
-	button:SetAlpha(0.7)
+	button:SetAlpha(1)
 
     -- Create icon texture
     button.icon = button:CreateTexture(nil, "BACKGROUND")
@@ -46,14 +46,21 @@ end
 local interruptIcon = CreateInterruptIconFrame()
 
 -- Check if the interrupt spell can be used
-local function IsInterruptReady(spellID)
-    local usable, noMana = _G.C_Spell.IsSpellUsable(spellID)
-    local spellCooldownInfo = _G.C_Spell.GetSpellCooldown(spellID)
-	interruptIcon.cooldown:SetCooldown(spellCooldownInfo.startTime, spellCooldownInfo.duration)
-	
-	local isOnCooldown = interruptIcon.cooldown:IsShown()
+local function IsInterruptReady()
+    return not interruptIcon.cooldown:IsShown()
+end
 
-    return usable and not isOnCooldown
+-- Update the interrupt cooldown icon
+local function UpdateInterruptIcon()
+    local spellCooldownInfo = _G.C_Spell.GetSpellCooldown(interruptSpellID)
+	interruptIcon.cooldown:SetCooldown(spellCooldownInfo.startTime, spellCooldownInfo.duration)
+	local isCoolDownShown = interruptIcon.cooldown:IsShown()
+	print(isCoolDownShown)
+	if isCoolDownShown then
+		interruptIcon:SetAlpha(0.5)
+	else
+		interruptIcon:SetAlpha(1)
+	end
 end
 
 -- Get the icon for the players interrupt spell
@@ -78,6 +85,8 @@ local function LoadTargetCastbarSettings()
 	targetCastBarYofs = db.yOfs or 0
 	targetCastBarScale = db.scale or scale
 	targetCastBarFrame:SetScale(targetCastBarScale)
+	C_CVar.SetCVar("showtargetcastbar ", "1")
+	interruptIcon.icon:SetTexture(GetInterruptSpellTexture(interruptSpellID))
 end
 
 local function SaveTargetCastbarSettings()
@@ -103,9 +112,6 @@ function module:OnAddonLoaded()
 		BlizzAddonExtensions:Print("Initializing Target Castbar DB")
 	end
     db = _TargetCastBar
-
-	-- load default scale
-	local scale = targetCastBarFrame:GetScale()
 
 	-- restore saved position if available or revert to initial values
 	LoadTargetCastbarSettings()
@@ -142,20 +148,16 @@ end
 
 -- Border Shield is shown on castbar, meaning spell is not interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Show", function()
-	targetCastBarFrame:SetStatusBarColor(0.5, 0.5, 0.5)	
+	targetCastBarFrame:SetStatusBarColor(0.5, 0.5, 0.5)
+	UpdateInterruptIcon()
 	interruptIcon:Hide()
 end)
 
 -- Border Shield is not shown on castbar, meaning spell is interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Hide", function()
 	targetCastBarFrame:SetStatusBarColor(1, 0, 0)
-	
-	if IsInterruptReady(interruptSpellID) then
-		interruptIcon.icon:SetTexture(GetInterruptSpellTexture(interruptSpellID))
-		interruptIcon:Show()
-	else
-		interruptIcon:Hide()
-	end	
+	UpdateInterruptIcon()
+	interruptIcon:Show()
 end)
 
 -- Prevent Target Castbar Frame from being repositioned to default position
@@ -163,6 +165,13 @@ hooksecurefunc(targetCastBarFrame, "SetPoint", function()
 	local meta = getmetatable(targetCastBarFrame).__index
 	meta.ClearAllPoints(targetCastBarFrame)
 	meta.SetPoint(targetCastBarFrame, targetCastBarPoint, UIParent, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs)
+end)
+
+-- Interrupt Spell Icon Loop
+interruptIcon:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+interruptIcon:SetScript("OnEvent", function(self, event, spellID)
+	if spellID ~= interruptSpellID then return end
+	UpdateInterruptIcon()
 end)
 
 BlizzAddonExtensions:RegisterModule("TargetCastBar", module)

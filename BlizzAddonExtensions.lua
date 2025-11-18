@@ -55,7 +55,8 @@ SlashCmdList["BAE"] = function(msg)
             print(" - " .. name)
         end
     elseif cmd == "help" then
-        BAE:Print("Commands: /bae list | /bae targetCastBarSetX . | /bae targetCastBarSetY . | /bae targetCastBarSetScale . | /bae targetCastBarReset")       
+        BAE:Print("Use /console showtargetcastbar 1 if castbar is not visible")
+        BAE:Print("Commands: /bae list | /bae targetCastBarSetX . | /bae targetCastBarSetY . | /bae targetCastBarSetScale . | /bae targetCastBarReset")
     else
         -- pass commands to modules that support them
         for _, module in pairs(BAE.modules) do
