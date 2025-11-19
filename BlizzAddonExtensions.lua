@@ -46,8 +46,14 @@ end)
 SLASH_BAE1 = "/bae"
 SlashCmdList["BAE"] = function(msg)
     local _, _, cmd, args = string.find(msg, "%s?(%w+)%s?(.*)")
-    cmd = cmd:lower():trim()
-    args = args:trim()
+
+    if not cmd then
+        cmd = "help"
+        args = ""
+    else
+        cmd = cmd:lower():trim()
+        args = args:trim()
+    end
 
     if cmd == "list" then
         BAE:Print("Loaded modules:")
@@ -56,7 +62,13 @@ SlashCmdList["BAE"] = function(msg)
         end
     elseif cmd == "help" then
         BAE:Print("Use /console showtargetcastbar 1 if castbar is not visible")
-        BAE:Print("Commands: /bae list | /bae targetCastBarSetX . | /bae targetCastBarSetY . | /bae targetCastBarSetScale . | /bae targetCastBarReset")
+        BAE:Print("Commands: /bae list | /bae targetCastBarSetX . | /bae targetCastBarSetY . | /bae targetCastBarSetScale . | /bae targetCastBarReset | /bae nameplatestackvspace . | nameplatestackvspacereset")
+    elseif cmd == "nameplatestackvspace" then
+        C_CVar.SetCVar("nameplateOverlapV", args)
+        BAE:Print("Nameplate V Stack set to " .. args)
+    elseif cmd == "nameplatestackvspacereset" then
+        C_CVar.SetCVar("nameplateOverlapV", 1.1)
+        BAE:Print("Nameplate V Stack reset to 1.1") 
     else
         -- pass commands to modules that support them
         for _, module in pairs(BAE.modules) do
