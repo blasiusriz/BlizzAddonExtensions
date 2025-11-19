@@ -85,7 +85,7 @@ local function LoadTargetCastbarSettings()
 	targetCastBarYofs = db.yOfs or 0
 	targetCastBarScale = db.scale or scale
 	targetCastBarFrame:SetScale(targetCastBarScale)
-	C_CVar.SetCVar("showtargetcastbar ", "1")
+	C_CVar.SetCVar("showtargetcastbar", "1")
 	interruptIcon.icon:SetTexture(GetInterruptSpellTexture(interruptSpellID))
 end
 
