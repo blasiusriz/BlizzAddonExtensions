@@ -13,6 +13,31 @@ function BAE:Print(msg)
     print("|cff00ccffBlizzAddonExtensions:|r " .. tostring(msg))
 end
 
+function BAE:DumpTable(table, recursive)
+    print("Dumping table contents:")
+    print(" Tables:")
+    for k, v in pairs(table) do
+        if type(v) == "table" then
+            print("  " .. k)
+            if recursive then
+                self:DumpTable(v, true)
+            end
+        end
+    end
+    print(" Functions:")
+    for k, v in pairs(table) do
+        if type(v) == "function" then
+            print("  " .. k)
+        end
+    end
+    print(" Others:")
+    for k, v in pairs(table) do
+        if type(v) ~= "table" and type(v) ~= "function" then
+            print("  " .. k .. " " .. type(v))
+        end
+    end    
+end
+
 local function InitializeModules()
     for name, module in pairs(BAE.modules) do
         if module.OnEnable then module:OnEnable() end

@@ -22,12 +22,72 @@ local INTERRUPT_SPELLS = {
 local _, class = UnitClass("player")
 local interruptSpellID = INTERRUPT_SPELLS[class]
 
+-- Create a custom castbar frame
+local function CreateCastBarFrame()
+
+	local frame = CreateFrame("Frame", "BAE_TargetCastBar", UIParent)
+	frame:SetSize(320, 30)
+	frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+	frame:Hide()
+
+	-- Background
+	frame.bg = frame:CreateTexture(nil, "BACKGROUND")
+	frame.bg:SetAllPoints(frame)
+	frame.bg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Background")
+	frame.bg:SetVertexColor(0, 0, 0, 0.6)
+
+	-- Border for the cast bar
+	local border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+	border:SetAllPoints(frame)
+	border:SetBackdrop({
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		edgeSize = 12,
+	})
+	border:SetBackdropBorderColor(0, 0, 0)
+
+	-- Spell icon on the left
+	local icon = frame:CreateTexture(nil, "ARTWORK")
+	icon:SetSize(30, 30)
+	icon:SetPoint("RIGHT", frame, "LEFT", -4, 0)
+	icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+	icon:Hide()
+
+	-- Border for the icon
+	local iconBorder = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+	iconBorder:SetSize(32, 32)
+	iconBorder:SetPoint("CENTER", icon, "CENTER")
+	iconBorder:SetBackdrop({
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		edgeSize = 12,
+	})
+	iconBorder:SetBackdropBorderColor(0, 0, 0)
+	iconBorder:Hide()
+
+	-- Cast bar itself
+	local bar = CreateFrame("StatusBar", nil, frame)
+	bar:SetPoint("TOPLEFT", frame, "TOPLEFT", 3, -3)
+	bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -3, 3)
+	bar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
+	bar:SetMinMaxValues(0, 1)
+	bar:SetValue(0)
+
+	bar.text = bar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	bar.text:SetPoint("CENTER")
+	bar.text:SetJustifyH("CENTER")
+	bar.text:SetSize(280, 20)
+
+	return frame, bar, icon
+end
+
+-- create the custom castbar frame
+local customCastBarFrame, customCastBar, customCastBarIcon = CreateCastBarFrame()
+
 -- Function to create an interrupt icon frame
 local function CreateInterruptIconFrame()
-	local parentFrame = targetCastBarFrame
+	local parentFrame = customCastBarFrame
     local button = CreateFrame("Frame", nil, parentFrame)
-	button:SetSize(20, 20)
-	button:SetPoint("LEFT", targetCastBarFrame, "RIGHT", 4, -5)
+	button:SetSize(30, 30)
+	button:SetPoint("LEFT", parentFrame, "RIGHT", 4, 0)
 	button:SetAlpha(1)
 
     -- Create icon texture
@@ -63,6 +123,15 @@ local function UpdateInterruptIcon()
 	end
 end
 
+-- Update the customcastbar frame
+local function UpdateCastBarFrameShown(shown)
+	if shown then
+		customCastBarFrame:Show()
+	else
+		customCastBarFrame:Hide()
+	end
+end
+
 -- Get the icon for the players interrupt spell
 local function GetInterruptSpellTexture(interruptSpellID)
 	return _G.C_Spell.GetSpellTexture(interruptSpellID)
@@ -84,7 +153,9 @@ local function LoadTargetCastbarSettings()
 	targetCastBarXofs = db.xOfs or 0
 	targetCastBarYofs = db.yOfs or 0
 	targetCastBarScale = db.scale or scale
-	targetCastBarFrame:SetScale(targetCastBarScale)
+	customCastBarFrame:SetScale(targetCastBarScale)
+	customCastBarFrame:SetPoint(targetCastBarPoint, UIParent, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs)
+
 	C_CVar.SetCVar("showtargetcastbar", "1")
 	interruptIcon.icon:SetTexture(GetInterruptSpellTexture(interruptSpellID))
 end
@@ -95,7 +166,8 @@ local function SaveTargetCastbarSettings()
 	db.xOfs = targetCastBarXofs
 	db.yOfs = targetCastBarYofs
 	db.scale = targetCastBarScale
-	targetCastBarFrame:SetScale(targetCastBarScale)
+	customCastBarFrame:SetScale(targetCastBarScale)
+	customCastBarFrame:SetPoint(targetCastBarPoint, UIParent, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs)
 end
 
 local function PrintTargetCastBarSettings()
@@ -115,6 +187,8 @@ function module:OnAddonLoaded()
 
 	-- restore saved position if available or revert to initial values
 	LoadTargetCastbarSettings()
+
+	-- BlizzAddonExtensions:DumpTable(targetCastBarFrame, false)
 
     BlizzAddonExtensions:Print("TargetCastBar initialized")
 end
@@ -146,16 +220,52 @@ function module:OnCommand(cmd, args)
     end
 end
 
+-- targetCastBarFrame shown/hidden hooks
+hooksecurefunc(targetCastBarFrame, "UpdateShownState", function()
+	local isShown = targetCastBarFrame:IsShown()
+	UpdateCastBarFrameShown(isShown)
+end)
+hooksecurefunc(targetCastBarFrame, "Hide", function()
+	UpdateCastBarFrameShown(false)
+end)
+hooksecurefunc(targetCastBarFrame, "SetValue", function()
+	local value = targetCastBarFrame:GetValue()
+	customCastBar:SetValue(value)
+end)
+hooksecurefunc(targetCastBarFrame, "SetMinMaxValues", function()
+	local min, max = targetCastBarFrame:GetMinMaxValues()
+	customCastBar:SetMinMaxValues(min, max)
+end)
+hooksecurefunc(targetCastBarFrame, "UpdateCastTimeTextShown", function()
+	local text = targetCastBarFrame.Text:GetText()
+	customCastBar.text:SetText(text)
+end)
+hooksecurefunc(targetCastBarFrame.Icon, "SetTexture", function()
+	local texture = targetCastBarFrame.Icon:GetTexture()
+	customCastBarIcon:SetTexture(texture)
+	customCastBarIcon:Show()
+end)
+hooksecurefunc(targetCastBarFrame, "PlayFadeAnim", function()
+    UpdateCastBarFrameShown(false)
+end)
+hooksecurefunc(targetCastBarFrame, "PlayFinishAnim", function()
+    UpdateCastBarFrameShown(false)
+end)
+hooksecurefunc(targetCastBarFrame, "PlayInterruptAnims", function()
+	local text = targetCastBarFrame.Text:GetText()
+	customCastBar.text:SetText(text)
+end)
+
 -- Border Shield is shown on castbar, meaning spell is not interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Show", function()
-	targetCastBarFrame:SetStatusBarColor(0.5, 0.5, 0.5)
+	customCastBar:SetStatusBarColor(0.5, 0.5, 0.5)
 	UpdateInterruptIcon()
 	interruptIcon:Hide()
 end)
 
 -- Border Shield is not shown on castbar, meaning spell is interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Hide", function()
-	targetCastBarFrame:SetStatusBarColor(1, 0, 0)
+	customCastBar:SetStatusBarColor(1, 0, 0)
 	UpdateInterruptIcon()
 	interruptIcon:Show()
 end)
@@ -163,8 +273,9 @@ end)
 -- Prevent Target Castbar Frame from being repositioned to default position
 hooksecurefunc(targetCastBarFrame, "SetPoint", function()
 	local meta = getmetatable(targetCastBarFrame).__index
-	meta.ClearAllPoints(targetCastBarFrame)
-	meta.SetPoint(targetCastBarFrame, targetCastBarPoint, UIParent, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs)
+	-- meta.ClearAllPoints(targetCastBarFrame)
+	-- meta.SetPoint(targetCastBarFrame, targetCastBarPoint, UIParent, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs)
+	meta.SetScale(targetCastBarFrame, 0.1)
 end)
 
 -- Interrupt Spell Icon Loop
