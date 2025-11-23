@@ -246,14 +246,18 @@ hooksecurefunc(targetCastBarFrame.Icon, "SetTexture", function()
 	customCastBarIcon:Show()
 end)
 hooksecurefunc(targetCastBarFrame, "PlayFadeAnim", function()
-    UpdateCastBarFrameShown(false)
+	UpdateCastBarFrameShown(false)
 end)
 hooksecurefunc(targetCastBarFrame, "PlayFinishAnim", function()
-    UpdateCastBarFrameShown(false)
+	UpdateCastBarFrameShown(false)
 end)
 hooksecurefunc(targetCastBarFrame, "PlayInterruptAnims", function()
 	local text = targetCastBarFrame.Text:GetText()
 	customCastBar.text:SetText(text)
+	-- delay hiding the castbar to allow interrupt text to be visible
+	C_Timer.After(1, function()
+		UpdateCastBarFrameShown(false)
+	end)	
 end)
 
 -- Border Shield is shown on castbar, meaning spell is not interruptible
@@ -273,9 +277,10 @@ end)
 -- Prevent Target Castbar Frame from being repositioned to default position
 hooksecurefunc(targetCastBarFrame, "SetPoint", function()
 	local meta = getmetatable(targetCastBarFrame).__index
-	-- meta.ClearAllPoints(targetCastBarFrame)
-	-- meta.SetPoint(targetCastBarFrame, targetCastBarPoint, UIParent, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs)
-	meta.SetScale(targetCastBarFrame, 0.1)
+	meta.ClearAllPoints(targetCastBarFrame)
+	-- move default castbar offscreen
+	meta.SetPoint(targetCastBarFrame, "CENTER", UIParent, "CENTER", 80000, 80000)
+	meta.SetAlpha(targetCastBarFrame, 0.0)
 end)
 
 -- Interrupt Spell Icon Loop
