@@ -220,10 +220,19 @@ function module:OnCommand(cmd, args)
     end
 end
 
+local function HideBlizzardCastBar()
+	local meta = getmetatable(targetCastBarFrame).__index
+	meta.ClearAllPoints(targetCastBarFrame)
+	-- move default castbar offscreen
+	meta.SetPoint(targetCastBarFrame, "CENTER", UIParent, "CENTER", 80000, 80000)
+	meta.SetAlpha(targetCastBarFrame, 0.0)
+end
+
 -- targetCastBarFrame shown/hidden hooks
 hooksecurefunc(targetCastBarFrame, "UpdateShownState", function()
 	local isShown = targetCastBarFrame:IsShown()
 	UpdateCastBarFrameShown(isShown)
+	HideBlizzardCastBar()
 end)
 hooksecurefunc(targetCastBarFrame, "Hide", function()
 	UpdateCastBarFrameShown(false)
@@ -276,11 +285,7 @@ end)
 
 -- Prevent Target Castbar Frame from being repositioned to default position
 hooksecurefunc(targetCastBarFrame, "SetPoint", function()
-	local meta = getmetatable(targetCastBarFrame).__index
-	meta.ClearAllPoints(targetCastBarFrame)
-	-- move default castbar offscreen
-	meta.SetPoint(targetCastBarFrame, "CENTER", UIParent, "CENTER", 80000, 80000)
-	meta.SetAlpha(targetCastBarFrame, 0.0)
+	HideBlizzardCastBar()
 end)
 
 -- Interrupt Spell Icon Loop
