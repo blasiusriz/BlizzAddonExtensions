@@ -7,3 +7,4 @@
 BlizzAddonExtensions.lua
 Modules/TargetCastBar.lua
 Modules/Auras.lua
+Modules/AurasMidnight.lua
