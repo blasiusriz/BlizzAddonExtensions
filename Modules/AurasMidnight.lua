@@ -1,8 +1,7 @@
 local module = {}
 local BlizzAddonExtensions = _G.BlizzAddonExtensions
 local db
-local taskQueue = {}
-local auraIconCache = {}
+local auraFrameCache = {}
 local _, _, _, toc = GetBuildInfo()
 
 if not _G.C_StringUtil then
@@ -17,25 +16,12 @@ local TruncateWhenZero = _G.C_StringUtil.TruncateWhenZero or function(i)
     end
 end
 
-local function RunNextTask()
-    local task = table.remove(taskQueue, 1)
-    if not task then return end
-
-    task()  
-    RunNextTask()
-end
-
-local function EnqueueTask(taskFunc)
-    table.insert(taskQueue, taskFunc)
-    RunNextTask()
-end
-
-local function CreateAuraIcon(instanceId)
+local function CreateAuraFrame()
     local frame = CreateFrame("Frame", nil, UIParent)
-    local settings = { x = 1450, y = -400, size = 40, offsetX = 0, offsetY = -5, offsetX2 = 5, offsetY2 = 0 }
-    local cacheSize = #auraIconCache
+    local settings = { x = 1350, y = -400, size = 40, offsetX = 0, offsetY = -5, offsetX2 = 5, offsetY2 = 0 }
+    local cacheSize = #auraFrameCache
     local breaks = 0
-    local maxIconsPerRow = 10
+    local maxIconsPerRow = 5
     local parentFrame
     local iconAlignment
     local offsetX
@@ -47,12 +33,12 @@ local function CreateAuraIcon(instanceId)
         offsetX = settings.x
         offsetY = settings.y       
     elseif (cacheSize % maxIconsPerRow) == 0 then
-        parentFrame = auraIconCache[cacheSize - (maxIconsPerRow - 1)].aura
+        parentFrame = auraFrameCache[cacheSize - (maxIconsPerRow - 1)]
         iconAlignment = "TOPRIGHT"
         offsetX = settings.offsetX2
         offsetY = settings.offsetY2
     else
-        parentFrame = auraIconCache[cacheSize].aura
+        parentFrame = auraFrameCache[cacheSize]
         iconAlignment = "BOTTOMLEFT"
         offsetX = settings.offsetX
         offsetY = settings.offsetY        
@@ -87,80 +73,40 @@ local function CreateAuraIcon(instanceId)
         GameTooltip:Hide()
     end)    
 
-    table.insert(auraIconCache, {aura = frame, instanceId = instanceId})
+    -- Hide at start
+    frame:Hide()
+
+    table.insert(auraFrameCache, frame)
 
     return frame
 end
 
--- local inCombat = UnitAffectingCombat("player")
-
-local function GetAvailableAuraIcon(instanceId)
-    for i, v in pairs(auraIconCache) do
-        if v.instanceId == nil then
-            -- print("|cnGREEN_FONT_COLOR:found unused icon for:|r", instanceId, "at index", i)
-            v.instanceId = instanceId
-            return v.aura
-        end
-    end
-    -- print("|cnYELLOW_FONT_COLOR:created new icon for:|r", instanceId)
-    return CreateAuraIcon(instanceId)
-end
-
-local function UnsetIcon(icon)
-    if icon then
-        icon.text:SetText("")
-        icon.icon:SetTexture(nil)
-        icon:Hide()
+local function HideFrame(frame)
+    if frame then
+        frame.text:SetText("")
+        frame.icon:SetTexture(nil)
+        frame:Hide()
     end
 end
 
-local function UnloudAuraIcon(instanceId)
-    for i, v in pairs(auraIconCache) do
-        if v.instanceId == instanceId then
-            -- print("|cnGREEN_FONT_COLOR:unloaded instance:|r", instanceId)
-            v.instanceId = nil
-            UnsetIcon(v.aura)
-            return
-        end
+local function UpdateAuraFrame(frame, aura)
+    if not frame then
+        return
     end
-    -- print("|cnRED_FONT_COLOR:unable to unload instance:|r", instanceId)
-end
 
-local function ReorderAuraIcons()
-    for i, v in pairs(auraIconCache) do
-        if v.instanceId == nil then
-            if auraIconCache[i + 1] then
-                -- print("|cnGREEN_FONT_COLOR:Moving:|r", i + 1, "to", i)
-                local nextIcon = auraIconCache[i + 1].aura
-                local nextInstanceId = auraIconCache[i + 1].instanceId
-                auraIconCache[i] = auraIconCache[i + 1]
-                UnsetIcon(nextIcon)
-                nextInstanceId = nil
-            end
-        end
+    if not UnitAffectingCombat("player") then
+        HideFrame(frame)
+        return
     end
-end
 
-local function GetAuraIcon(instanceId)
-    for i, v in pairs(auraIconCache) do
-        if v.instanceId == instanceId then
-            -- print("|cnGREEN_FONT_COLOR:found icon for instance:|r", instanceId)
-            return v.aura
-        end
-    end
-    -- print("|cnRED_FONT_COLOR:unable to find icon for instance:|r", instanceId)
-    return nil
-end
-
-local function UpdateAuraIcon(icon, aura)
-    if icon and aura then
+    if aura then
         local applications = TruncateWhenZero(aura.applications or 0)
-
-        local texture = _G.C_Spell.GetSpellTexture(aura.spellId)
-        icon.icon:SetTexture(texture)
-        icon.text:SetText(applications)
-        icon.tooltipText = aura.name
-        icon:Show()
+        frame.icon:SetTexture(aura.icon)
+        frame.text:SetText(applications)
+        frame.tooltipText = aura.name
+        frame:Show()
+    else
+        HideFrame(frame)
     end
 end
 
@@ -174,36 +120,15 @@ function module:OnAddonLoaded()
 
     frame:SetScript("OnEvent", function(self, event, unit, info)
         if unit == "player" then
-            if info.isFullUpdate then
-                -- print("full update") -- loop over all auras, etc
-                return
-            end
-            if info.addedAuras then
-                for i, v in pairs(info.addedAuras) do
-                    -- print(unit, "|cnGREEN_FONT_COLOR:added|r", v.name, v.isNameplateOnly, v.applications)
-                    local icon = GetAvailableAuraIcon(v.auraInstanceID)
-                    EnqueueTask(UpdateAuraIcon(icon, v))
-                    -- print(v.auraInstanceID, issecretvalue(v.auraInstanceID))
-                    -- print(v.name, issecretvalue(v.name))
-                    -- print(v.spellId, issecretvalue(v.spellId))
+            for i=1, 40 do
+                local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL|PLAYER")
+                if aura then
+                    local auraFrame = auraFrameCache[i] or CreateAuraFrame()
+                    UpdateAuraFrame(auraFrame, aura)
+                else
+                    local auraFrame = auraFrameCache[i]
+                    HideFrame(auraFrame)
                 end
-            end
-            if info.updatedAuraInstanceIDs then
-                for i, v in pairs(info.updatedAuraInstanceIDs) do
-                    local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, v)
-                    local icon = GetAuraIcon(v)
-                    if aura and icon then
-                        -- print(unit, "|cnYELLOW_FONT_COLOR:updated|r", aura.name)
-                        EnqueueTask(UpdateAuraIcon(icon, aura))                      
-                    end
-                end
-            end
-            if info.removedAuraInstanceIDs then
-                for i, v in pairs(info.removedAuraInstanceIDs) do
-                    -- print(unit, "|cnRED_FONT_COLOR:removed|r", v)
-                    EnqueueTask(UnloudAuraIcon(v))
-                end
-                -- EnqueueTask(ReorderAuraIcons())
             end
         end
     end)
@@ -215,6 +140,34 @@ function module:OnEnable()
 
 end
 
-if toc >= 120000 then
-    BlizzAddonExtensions:RegisterModule("AurasMidnight", module)
+local function DumpAuraInfo(info)
+    if info.isFullUpdate then
+        print("full update") -- loop over all auras, etc
+        return
+    end
+    if info.addedAuras then
+        for i, v in pairs(info.addedAuras) do
+            print(unit, "|cnGREEN_FONT_COLOR:added|r", v.name, v.isNameplateOnly, v.applications)
+        end
+    end
+    if info.updatedAuraInstanceIDs then
+        for i, v in pairs(info.updatedAuraInstanceIDs) do
+            local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, v)
+            if aura then
+                print(unit, "|cnYELLOW_FONT_COLOR:updated|r", aura.name)
+                print("Is Secure auraInstanceID:", aura.name, aura.auraInstanceID, issecretvalue(aura.auraInstanceID))
+                print("Is Secure duration:", aura.name, aura.duration, issecretvalue(aura.duration))
+                print("Is Secure expirationTime:", aura.name, aura.expirationTime, issecretvalue(aura.expirationTime))                  
+            end
+        end
+    end
+    if info.removedAuraInstanceIDs then
+        for i, v in pairs(info.removedAuraInstanceIDs) do
+            print(unit, "|cnRED_FONT_COLOR:removed|r", v)
+        end 
+    end
 end
+
+-- if toc >= 120000 then
+    BlizzAddonExtensions:RegisterModule("AurasMidnight", module)
+-- end
