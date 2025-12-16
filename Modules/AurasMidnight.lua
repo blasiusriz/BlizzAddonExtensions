@@ -168,6 +168,6 @@ local function DumpAuraInfo(info)
     end
 end
 
--- if toc >= 120000 then
+if toc >= 120000 then
     BlizzAddonExtensions:RegisterModule("AurasMidnight", module)
--- end
+end
