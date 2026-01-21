@@ -18,10 +18,9 @@ end
 
 local function CreateAuraFrame()
     local frame = CreateFrame("Frame", nil, UIParent)
-    local settings = { x = 1350, y = -400, size = 40, offsetX = 0, offsetY = -5, offsetX2 = 5, offsetY2 = 0 }
+    local settings = { x = 1210, y = -500, size = 32, maxIconsPerRow = 6, offsetX = 0, offsetY = -5, offsetX2 = 5, offsetY2 = 0 }
     local cacheSize = #auraFrameCache
     local breaks = 0
-    local maxIconsPerRow = 5
     local parentFrame
     local iconAlignment
     local offsetX
@@ -32,8 +31,8 @@ local function CreateAuraFrame()
         iconAlignment = "TOPLEFT"
         offsetX = settings.x
         offsetY = settings.y       
-    elseif (cacheSize % maxIconsPerRow) == 0 then
-        parentFrame = auraFrameCache[cacheSize - (maxIconsPerRow - 1)]
+    elseif (cacheSize % settings.maxIconsPerRow) == 0 then
+        parentFrame = auraFrameCache[cacheSize - (settings.maxIconsPerRow - 1)]
         iconAlignment = "TOPRIGHT"
         offsetX = settings.offsetX2
         offsetY = settings.offsetY2

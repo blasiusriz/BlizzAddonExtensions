@@ -1,4 +1,4 @@
-## Interface: 120000, 110207
+## Interface: 120001, 120000, 110207
 ## Title: BlizzAddonExtensions
 ## SavedVariables: _TargetCastBar
 ## Notes: Modular WoW Addon Extensions (includes Target CastBar module)
