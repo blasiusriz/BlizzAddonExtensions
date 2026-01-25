@@ -6,6 +6,7 @@
 ## Version: 1.1
 
 BlizzAddonExtensions.lua
+Utilities.lua
 Modules/TargetCastBar.lua
-Modules/Auras.lua
 Modules/AurasMidnight.lua
+Modules/MissingBuffs.lua
