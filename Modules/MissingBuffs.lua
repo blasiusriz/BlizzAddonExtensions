@@ -15,10 +15,11 @@ local weaponOils = {
     451869  -- Algari Mana Oil
 }
 local flasks = {
-    432021  -- Flask of Alchemical Chaos
+    432021,  -- Flask of Alchemical Chaos
+    431972   -- FLask of ...
 }   
 local food = {
-    457482  -- Hearty Beledar's Bounty
+    462180  -- Hearty Beledar's Bounty
 }
 
 local function PlayerAuraExists(auraList)
@@ -70,7 +71,8 @@ local function HideAllBuffFrames()
 end
 
 local function CreateMissingBuffFrame(spellId)
-    local frame = BAE.Utilities.CreateAuraFrame(playerMissingBuffsFrameCache, { x = 960, y = -500, size = 40, maxIconsPerRow = 10, padding = 5 }, "HORIZONTAL")
+    local settings = { x = 900, y = -300, size = 40, maxIconsPerRow = 3, padding = 5 }
+    local frame = BAE.Utilities.CreateAuraFrame(playerMissingBuffsFrameCache, settings, "HORIZONTAL")
     local texture = _G.C_Spell.GetSpellTexture(spellId)
     frame.icon:SetTexture(texture)   
     return frame
