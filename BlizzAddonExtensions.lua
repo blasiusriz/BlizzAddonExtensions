@@ -87,7 +87,10 @@ SlashCmdList["BAE"] = function(msg)
         end
     elseif cmd == "help" then
         BAE:Print("Use /console showtargetcastbar 1 if castbar is not visible")
-        BAE:Print("Commands: /bae list | /bae targetCastBarSetX . | /bae targetCastBarSetY . | /bae targetCastBarSetScale . | /bae targetCastBarReset | /bae nameplatestackvspace . | nameplatestackvspacereset")
+        BAE:Print("List Modules: /bae list")
+        BAE:Print("Target Cast Bar: /bae targetCastBarSetX . | /bae targetCastBarSetY . | /bae targetCastBarSetScale . | /bae targetCastBarReset | /bae nameplatestackvspace . | /bae nameplatestackvspacereset")
+        BAE:Print("MissingBuffs: /bae missingBuffsSetX . | /bae missingBuffsSetY . | /bae missingBuffsSize . | /bae missingBuffsPadding . | /bae missingBuffsReset")
+        BAE:Print("Auras: /bae aurasSetX . | /bae aurasSetY . | /bae aurasSize . | /bae aurasPadding . | /bae aurasReset")
     elseif cmd == "nameplatestackvspace" then
         C_CVar.SetCVar("nameplateOverlapV", args)
         BAE:Print("Nameplate V Stack set to " .. args)

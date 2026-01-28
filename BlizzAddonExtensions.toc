@@ -1,6 +1,6 @@
 ## Interface: 120001, 120000, 110207
 ## Title: BlizzAddonExtensions
-## SavedVariables: _TargetCastBar
+## SavedVariables: _TargetCastBar, _Auras, _MissingBuffs
 ## Notes: Modular WoW Addon Extensions (includes Target CastBar module)
 ## Author: ChatGPT and Mizuki
 ## Version: 1.1
