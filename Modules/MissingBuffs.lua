@@ -21,7 +21,8 @@ local flasks = {
     431972   -- FLask of ...
 }   
 local food = {
-    462180  -- Hearty Beledar's Bounty
+    462180,  -- Hearty Beledar's Bounty
+    462210  -- Feast
 }
 
 local function PlayerAuraExists(auraList)
