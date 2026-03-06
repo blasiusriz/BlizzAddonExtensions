@@ -11,7 +11,8 @@ local foodFrame
 
 local weaponEnchantInfo = {
     7495, -- Algari Mana Oil
-    6498  -- Living Weapon
+    6498, -- Living Weapon
+    8052  -- Phoenix Oil    
 }
 local weaponOils = {
     451869  -- Algari Mana Oil

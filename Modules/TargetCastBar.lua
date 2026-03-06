@@ -233,6 +233,17 @@ hooksecurefunc(targetCastBarFrame, "UpdateShownState", function()
 	local isShown = targetCastBarFrame:IsShown()
 	UpdateCastBarFrameShown(isShown)
 	HideBlizzardCastBar()
+	local name, nameSubtext, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible = UnitCastingInfo("target");
+	
+	if isShown and not notInterruptible then
+		customCastBar:SetStatusBarColor(0.5, 0.5, 0.5)
+		UpdateInterruptIcon()
+		interruptIcon:Hide()
+	else
+		customCastBar:SetStatusBarColor(1, 0, 0)
+		UpdateInterruptIcon()
+		interruptIcon:Show()
+	end
 end)
 hooksecurefunc(targetCastBarFrame, "Hide", function()
 	UpdateCastBarFrameShown(false)
@@ -269,14 +280,14 @@ hooksecurefunc(targetCastBarFrame, "PlayInterruptAnims", function()
 	end)	
 end)
 
--- Border Shield is shown on castbar, meaning spell is not interruptible
+-- DEPRECATED: Border Shield is shown on castbar, meaning spell is not interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Show", function()
 	customCastBar:SetStatusBarColor(0.5, 0.5, 0.5)
 	UpdateInterruptIcon()
 	interruptIcon:Hide()
 end)
 
--- Border Shield is not shown on castbar, meaning spell is interruptible
+-- DEPRECATED: Border Shield is not shown on castbar, meaning spell is interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Hide", function()
 	customCastBar:SetStatusBarColor(1, 0, 0)
 	UpdateInterruptIcon()
