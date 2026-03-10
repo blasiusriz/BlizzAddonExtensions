@@ -1,6 +1,7 @@
 local module = {}
 local BlizzAddonExtensions = _G.BlizzAddonExtensions
 local targetCastBarFrame = _G.TargetFrameSpellBar
+
 local db
 local targetCastBarPoint, targetCastBarRelativePoint, targetCastBarXofs, targetCastBarYofs, targetCastBarScale
 
@@ -17,6 +18,10 @@ local INTERRUPT_SPELLS = {
     HUNTER = 147362,    -- Counter Shot
     EVOKER = 351338,    -- Quell
 }
+
+-- colors
+local COLOR_INTERRUPTIBLE = CreateColor(1, 0, 0, 1) -- Red
+local COLOR_NOT_INTERRUPTIBLE = CreateColor(0.5, 0.5, 0.5, 1) -- Gray
 
 -- Get the players interrupt spell
 local _, class = UnitClass("player")
@@ -188,7 +193,7 @@ function module:OnAddonLoaded()
 	-- restore saved position if available or revert to initial values
 	LoadTargetCastbarSettings()
 
-	-- BlizzAddonExtensions:DumpTable(targetCastBarFrame, false)
+	-- BlizzAddonExtensions:DumpTable(targetCastBarFrame, false)	
 
     BlizzAddonExtensions:Print("TargetCastBar initialized")
 end
@@ -233,17 +238,6 @@ hooksecurefunc(targetCastBarFrame, "UpdateShownState", function()
 	local isShown = targetCastBarFrame:IsShown()
 	UpdateCastBarFrameShown(isShown)
 	HideBlizzardCastBar()
-	local name, nameSubtext, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible = UnitCastingInfo("target");
-	
-	if isShown and not notInterruptible then
-		customCastBar:SetStatusBarColor(0.5, 0.5, 0.5)
-		UpdateInterruptIcon()
-		interruptIcon:Hide()
-	else
-		customCastBar:SetStatusBarColor(1, 0, 0)
-		UpdateInterruptIcon()
-		interruptIcon:Show()
-	end
 end)
 hooksecurefunc(targetCastBarFrame, "Hide", function()
 	UpdateCastBarFrameShown(false)
@@ -282,16 +276,18 @@ end)
 
 -- DEPRECATED: Border Shield is shown on castbar, meaning spell is not interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Show", function()
-	customCastBar:SetStatusBarColor(0.5, 0.5, 0.5)
-	UpdateInterruptIcon()
-	interruptIcon:Hide()
+	print("Border Shield shown - spell is not interruptible")
+	-- customCastBar:SetStatusBarColor(0.5, 0.5, 0.5)
+	-- UpdateInterruptIcon()
+	-- interruptIcon:Hide()
 end)
 
 -- DEPRECATED: Border Shield is not shown on castbar, meaning spell is interruptible
 hooksecurefunc(targetCastBarFrame.BorderShield, "Hide", function()
-	customCastBar:SetStatusBarColor(1, 0, 0)
-	UpdateInterruptIcon()
-	interruptIcon:Show()
+	print("Border Shield hidden - spell is interruptible")
+	-- customCastBar:SetStatusBarColor(1, 0, 0)
+	-- UpdateInterruptIcon()
+	-- interruptIcon:Show()
 end)
 
 -- Prevent Target Castbar Frame from being repositioned to default position
@@ -305,5 +301,22 @@ interruptIcon:SetScript("OnEvent", function(self, event, spellID)
 	if spellID ~= interruptSpellID then return end
 	UpdateInterruptIcon()
 end)
+
+
+customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_START")
+customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_STOP")
+customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE")
+customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
+
+customCastBarFrame:SetScript("OnEvent", function(self, event, unit, info)
+	if(unit == "target" and event == "UNIT_SPELLCAST_START") then
+		local isNotInterruptible = BlizzAddonExtensions.Utilities.IsUnitCastingNotInterruptible("target")
+		local color = C_CurveUtil.EvaluateColorFromBoolean(isNotInterruptible, COLOR_NOT_INTERRUPTIBLE, COLOR_INTERRUPTIBLE)
+		-- print("Not Interruptible: " .. tostring(isNotInterruptible))
+		customCastBar:SetStatusBarColor(color:GetRGBA())
+		interruptIcon:SetAlphaFromBoolean(isNotInterruptible, 0, 1)
+		UpdateInterruptIcon()
+	end
+end)	
 
 BlizzAddonExtensions:RegisterModule("TargetCastBar", module)

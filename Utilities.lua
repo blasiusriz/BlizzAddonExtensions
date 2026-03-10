@@ -180,3 +180,17 @@ end
 function BAE.Utilities.IsPlayerInCombat()
     return UnitAffectingCombat("player")
 end
+
+function BAE.Utilities.IsUnitCastingNotInterruptible(unit)
+    local name, text, texture, startTimeMS, endTimeMS, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo(unit)
+    if name then
+        return notInterruptible
+    end
+
+    name, text, texture, startTimeMS, endTimeMS, isTradeSkill, castID, notInterruptible, spellId = UnitChannelInfo(unit)
+    if name then
+        return notInterruptible
+    end
+    
+    return true
+end
