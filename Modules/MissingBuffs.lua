@@ -19,13 +19,13 @@ local weaponOils = {
 }
 local flasks = {
     432021,  -- Flask of Alchemical Chaos
-    431972,   -- FLask of ...
-    1235108
+    431972,  -- FLask of ...
+    1235108  -- Flask of the Magisters
 }   
 local food = {
     462180,  -- Hearty Beledar's Bounty
     462210,  -- Feast
-    1233724  -- Midnight Food
+    1233724  -- Royal Roast
 }
 
 local function PlayerAuraExists(auraList)
