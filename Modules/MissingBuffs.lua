@@ -19,7 +19,8 @@ local weaponOils = {
 }
 local flasks = {
     432021,  -- Flask of Alchemical Chaos
-    431972   -- FLask of ...
+    431972,   -- FLask of ...
+    1235108
 }   
 local food = {
     462180,  -- Hearty Beledar's Bounty
