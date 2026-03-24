@@ -304,18 +304,15 @@ end)
 
 
 customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_START")
-customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_STOP")
-customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTIBLE")
-customCastBarFrame:RegisterEvent("UNIT_SPELLCAST_NOT_INTERRUPTIBLE")
-
 customCastBarFrame:SetScript("OnEvent", function(self, event, unit, info)
 	if(unit == "target" and event == "UNIT_SPELLCAST_START") then
 		local isNotInterruptible = BlizzAddonExtensions.Utilities.IsUnitCastingNotInterruptible("target")
 		local color = C_CurveUtil.EvaluateColorFromBoolean(isNotInterruptible, COLOR_NOT_INTERRUPTIBLE, COLOR_INTERRUPTIBLE)
 		-- print("Not Interruptible: " .. tostring(isNotInterruptible))
 		customCastBar:SetStatusBarColor(color:GetRGBA())
-		interruptIcon:SetAlphaFromBoolean(isNotInterruptible, 0, 1)
 		UpdateInterruptIcon()
+		interruptIcon:SetAlphaFromBoolean(isNotInterruptible, 0, 1)
+		HideBlizzardCastBar()
 	end
 end)	
 
