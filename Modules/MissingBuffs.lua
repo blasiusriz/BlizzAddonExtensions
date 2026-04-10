@@ -25,7 +25,8 @@ local flasks = {
 local food = {
     462180,  -- Hearty Beledar's Bounty
     462210,  -- Feast
-    1233724  -- Royal Roast
+    1233724,  -- Royal Roast,
+    1285644  -- Royal Roast
 }
 
 local function PlayerAuraExists(auraList)
@@ -156,8 +157,10 @@ function module:OnAddonLoaded()
     frame:SetScript("OnEvent", function(self, event, unit, info)
         if BAE.Utilities.IsInInstance() then
             if event == "UNIT_AURA" and unit == "player" then
-                if not BAE.Utilities.IsPlayerInCombat() then
+                if not BAE.Utilities.IsPlayerInCombat() and not BAE.Utilities.IsMythicPlusActive() then
                     CheckMissingBuffs()
+                else 
+                    HideAllBuffFrames()
                 end
             elseif event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_ENTERING_WORLD" or event == "ZONE_CHANGED_NEW_AREA" then
                 CheckMissingBuffs()

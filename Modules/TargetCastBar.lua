@@ -117,12 +117,18 @@ end
 
 -- Update the interrupt cooldown icon
 local function UpdateInterruptIcon()
-    local spellCooldownInfo = _G.C_Spell.GetSpellCooldown(interruptSpellID)
-	interruptIcon.cooldown:SetCooldown(spellCooldownInfo.startTime, spellCooldownInfo.duration)
+	local duration = _G.C_Spell.GetSpellCooldownDuration(interruptSpellID)
+
+	if duration then
+		interruptIcon.cooldown:SetCooldownFromDurationObject(duration)
+	else
+		interruptIcon.cooldown:Clear()
+	end
+
 	local isCoolDownShown = interruptIcon.cooldown:IsShown()
 
 	if isCoolDownShown then
-		interruptIcon:SetAlpha(0.5)
+		interruptIcon:SetAlpha(0.2)
 	else
 		interruptIcon:SetAlpha(1)
 	end

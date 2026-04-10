@@ -181,6 +181,15 @@ function BAE.Utilities.IsPlayerInCombat()
     return UnitAffectingCombat("player")
 end
 
+function BAE.Utilities.IsMythicPlusActive()
+    local inInstance, instanceType = IsInInstance()
+    if not inInstance or instanceType ~= "party" then
+        return false
+    end
+
+    return C_ChallengeMode.GetActiveChallengeMapID() ~= nil
+end
+
 function BAE.Utilities.IsUnitCastingNotInterruptible(unit)
     local name, text, texture, startTimeMS, endTimeMS, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo(unit)
     if name then
