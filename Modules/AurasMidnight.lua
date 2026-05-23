@@ -13,6 +13,7 @@ local function ResetAurasSettings()
     settings.size = 40
     settings.maxIconsPerRow = 3
     settings.padding = 5
+    settings.enabled = false
 
     if playerAuraFrameCache[1] then
         playerAuraFrameCache[1]:SetPoint("TOPLEFT", UIParent, "TOPLEFT", settings.x, settings.y)
@@ -28,6 +29,7 @@ local function LoadAurasSettings()
     settings.size = db.size or 32
     settings.maxIconsPerRow = db.maxIconsPerRow or 6
     settings.padding = db.padding or 5
+    settings.enabled = db.enabled or false
 end
 
 local function SaveAurasSettings()
@@ -36,6 +38,7 @@ local function SaveAurasSettings()
     db.size = settings.size
     db.maxIconsPerRow = settings.maxIconsPerRow
     db.padding = settings.padding
+    db.enabled = settings.enabled
 
     if playerAuraFrameCache[1] then
         playerAuraFrameCache[1]:SetPoint("TOPLEFT", UIParent, "TOPLEFT", settings.x, settings.y)
@@ -63,7 +66,7 @@ function module:OnAddonLoaded()
     frame:RegisterEvent("UNIT_AURA")
 
     frame:SetScript("OnEvent", function(self, event, unit, info)
-        if unit == "player" then
+        if unit == "player" and settings.enabled then
             -- BAE.Utilities.DumpAuraInfo(info, unit)
             for i=1, 40 do
                 local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL|PLAYER")
@@ -101,12 +104,16 @@ function module:OnCommand(cmd, args)
 	elseif cmd == "aurassize" then		
 		settings.size = args or 0
 		SaveAurasSettings()
-        BlizzAddonExtensions:Print("Auras Size set to: " .. settings.size)                
+        BlizzAddonExtensions:Print("Auras Size set to: " .. settings.size)
+	elseif cmd == "aurasenabled" then
+		settings.enables = args or false
+		SaveAurasSettings()
+        BlizzAddonExtensions:Print("Auras Enables set to: " .. settings.enabled)                             
 	elseif cmd == "aurasreset" then
 		ResetAurasSettings()
 		SaveAurasSettings()
         BlizzAddonExtensions:Print("Auras reset.")
-		PrintAurasSettings()
+		PrintAurasSettings()   
     end
 end
 

@@ -1,4 +1,4 @@
-## Interface: 120005, 120001, 120000
+## Interface: 120007, 120005
 ## Title: BlizzAddonExtensions
 ## SavedVariables: _TargetCastBar, _Auras, _MissingBuffs
 ## Notes: Modular WoW Addon Extensions (includes Target CastBar module)
