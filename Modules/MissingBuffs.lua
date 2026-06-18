@@ -20,7 +20,8 @@ local weaponOils = {
 local flasks = {
     432021,  -- Flask of Alchemical Chaos
     431972,  -- FLask of ...
-    1235108  -- Flask of the Magisters
+    1235108,  -- Flask of the Magisters
+    1235110   -- Flask of the Blood Knight
 }   
 local food = {
     462180,  -- Hearty Beledar's Bounty
