@@ -27,7 +27,8 @@ local food = {
     462180,  -- Hearty Beledar's Bounty
     462210,  -- Feast
     1233724,  -- Royal Roast,
-    1285644  -- Royal Roast
+    1285644,  -- Royal Roast
+    1233705
 }
 
 local function PlayerAuraExists(auraList)
